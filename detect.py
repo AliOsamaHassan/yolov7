@@ -16,7 +16,7 @@ from utils.torch_utils import select_device, load_classifier, time_synchronized,
 
 
 def detect(save_img=False):
-    source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
+    source, weights, view_img, save_txt, imgsz, trace, blur_classes = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace, opt.blur_classes
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
@@ -118,6 +118,16 @@ def detect(save_img=False):
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                                
+                    if blur_classes and int(cls) in blur_classes:
+                        #Add Object Blurring Code
+                        #..................................................................
+                        crop_obj = im0[int(xyxy[1]):int(xyxy[3]),int(xyxy[0]):int(xyxy[2])]
+                        blur_ratio = 30
+                        blur = cv2.blur(crop_obj,(blur_ratio,blur_ratio))
+                        im0[int(xyxy[1]):int(xyxy[3]),int(xyxy[0]):int(xyxy[2])] = blur
+                        #..................................................................
+                        
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
@@ -183,6 +193,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
+    parser.add_argument('--blur-classes', nargs='+', type=int, help='blur by class: --blur-classes 0, or --blur-classes 0 2 3')
+    
     opt = parser.parse_args()
     print(opt)
     #check_requirements(exclude=('pycocotools', 'thop'))
